@@ -7,11 +7,10 @@
                    (str/split-lines)
                    (partition-by str/blank?))
         column-section (first lines)
-        column-ids (str/split (str/trim (last column-section)) #"   ")
         columns (->> column-section
                      (drop-last 1)
                      (map #(take-nth 4 (drop 1 %))))
-        stacks (->> column-ids
+        stacks (->> columns
                     (count)
                     (range)
                     (map #(for [col columns] (nth col %)))
@@ -22,33 +21,17 @@
     {:stacks stacks
      :instructions instructions}))
 
-(defn run-instructions [stacks [num-to-move from-col to-col]]
+(defn run-instructions [is-reversed stacks [num-to-move from-col to-col]]
   (let [from-idx (- from-col 1)
         to-idx (- to-col 1)
-        new-to-col
-        (concat
-         (reverse (take num-to-move
-                        (nth stacks from-idx)))
-         (nth stacks to-idx))
-        new-from-col
-        (drop num-to-move (nth stacks from-idx))]
-    (map-indexed (fn [idx col]
-                   (cond
-                     (= idx from-idx) new-from-col
-                     (= idx to-idx) new-to-col
-                     :else col)) stacks)))
-
-
-(defn run-instructions-pt2 [stacks [num-to-move from-col to-col]]
-  (let [from-idx (- from-col 1)
-        to-idx (- to-col 1)
-        new-to-col
-        (concat
-         (take num-to-move
-               (nth stacks from-idx))
-         (nth stacks to-idx))
-        new-from-col
-        (drop num-to-move (nth stacks from-idx))]
+        items-to-move (take num-to-move
+                            (nth stacks from-idx))
+        new-to-col (concat
+                    (if is-reversed
+                      (reverse items-to-move)
+                      items-to-move)
+                    (nth stacks to-idx))
+        new-from-col (drop num-to-move (nth stacks from-idx))]
     (map-indexed (fn [idx col]
                    (cond
                      (= idx from-idx) new-from-col
@@ -64,13 +47,12 @@
       (reset! remaining-instructions (drop 1 @remaining-instructions)))
     @current-stack))
 
-
 (defn part-1
   "Day 05 Part 1"
   [input]
   (->> input
        (get-stacks-and-instructions)
-       (process-stacks run-instructions)
+       (process-stacks (partial run-instructions true))
        (map first)
        (reduce str)))
 
@@ -79,6 +61,6 @@
   [input]
   (->> input
        (get-stacks-and-instructions)
-       (process-stacks run-instructions-pt2)
+       (process-stacks (partial run-instructions false))
        (map first)
        (reduce str)))
