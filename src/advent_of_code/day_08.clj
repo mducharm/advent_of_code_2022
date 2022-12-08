@@ -17,19 +17,23 @@
   (let [split (split-at idx coll)]
     (list (reverse (first split)) (drop 1 (second split)))))
 
-(defn tree-visible? [[x y] grid]
+(defn get-current-tree [[x y] grid]
+  (-> grid (nth y) (nth x)))
+
+(defn prepare-tree-sightlines [[x y] grid]
   (let [row (nth grid y)
-        column (map #(nth % x) grid)
-        current-tree (-> grid (nth y) (nth x))
-        sight-lines (concat (get-sightlines y column) (get-sightlines x row))]
+        column (map #(nth % x) grid)]
+    (concat (get-sightlines y column) (get-sightlines x row))))
+
+(defn tree-visible? [pair grid]
+  (let [current-tree (get-current-tree pair grid)
+        sight-lines (prepare-tree-sightlines pair grid)]
     (or (some empty? sight-lines)
         (some (partial every? #(> current-tree %)) sight-lines))))
 
-(defn calculate-scenic-score [[x y] grid]
-  (let [row (nth grid y)
-        column (map #(nth % x) grid)
-        current-tree (-> grid (nth y) (nth x))
-        sight-lines (concat (get-sightlines y column) (get-sightlines x row))]
+(defn calculate-scenic-score [pair grid]
+  (let [current-tree (get-current-tree pair grid)
+        sight-lines (prepare-tree-sightlines pair grid)]
     (->> sight-lines
          (map (partial split-with #(> current-tree %)))
          (map #(concat (first %) (take 1 (second %))))
