@@ -1,6 +1,5 @@
-import os
+import os, re, time, contextlib
 from collections import deque
-import re
 
 def get_commands():
     file_dir = os.path.dirname(os.path.realpath('__file__'))
@@ -71,9 +70,20 @@ def get_dir_to_delete(nodes):
                         if is_large_enough(x, nodes[0])]
     return min(potential_dirs)
 
+@contextlib.contextmanager
+def timer():
+    start = time.perf_counter()
+    yield 
+    stop = time.perf_counter()
+    result = (stop - start) / 1000
+    print("Time to execute:", result, "ms")
+
 if __name__ == '__main__':
     commands = get_commands()
     nodes = generate_nodes(commands)
 
-    print("part 1: ", calculate_dir_size(nodes))
-    print("part 2: ", get_dir_to_delete(nodes))
+    with timer():
+        print("part 1: ", calculate_dir_size(nodes))
+
+    with timer():
+        print("part 2: ", get_dir_to_delete(nodes))
