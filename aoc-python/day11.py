@@ -80,30 +80,32 @@ def timer():
     start = time.perf_counter()
     yield
     stop = time.perf_counter()
-    result = round((stop - start) / 1000, 10)
-    print("Time to execute:", result, "ms")
+    result = round((stop - start), 10)
+    print("Time to execute:", result, "seconds")
 
+def part1(file_name):
+    monkeys = parse_monkeys(get_input(file_name))
+    return determine_monkey_business(20, monkeys, lambda x: x // 3)
+
+def part2(file_name):
+    monkeys = parse_monkeys(get_input(file_name))
+    m = math.prod(monkeys["tests"])
+    return determine_monkey_business(10_000, monkeys, lambda x: x % m)
 
 if __name__ == '__main__':
 
     # part 1 example
-    example_monkeys = parse_monkeys(get_input("day-11-example"))
-    pt1_example = determine_monkey_business(20, example_monkeys, lambda x: x // 3)
+    pt1_example = part1("day-11-example")
     assert pt1_example == 10605, f"Result was {pt1_example} instead of {10605}"
 
-    # part 1 
-    monkeys = parse_monkeys(get_input("day-11"))
+    # part 1
     with timer():
-        print("part 1: ", determine_monkey_business(20, monkeys, lambda x: x // 3))
+        print("part 1: ", part1("day-11"))
 
     # part 2 example
-    example_monkeys = parse_monkeys(get_input("day-11-example"))
-    m = math.prod(example_monkeys["tests"])
-    pt2_example = determine_monkey_business(10_000, example_monkeys, lambda x: x % m)
+    pt2_example = part2("day-11-example")
     assert pt2_example == 2713310158, f"Result was {pt2_example} instead of {2713310158}"
 
     # part 2 
-    monkeys = parse_monkeys(get_input("day-11"))
-    m = math.prod(monkeys["tests"])
     with timer():
-        print("part 2: ", determine_monkey_business(10_000, monkeys, lambda x: x % m))
+        print("part 2: ", part2("day-11"))
