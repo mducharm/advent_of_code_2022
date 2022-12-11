@@ -10,7 +10,6 @@ from typing import Callable, List
 def get_input(txt_name):
     file_dir = os.path.dirname(os.path.realpath('__file__'))
     filename = os.path.join(file_dir, f'../resources/{txt_name}.txt')
-    print(os.getcwd())
     f = open(filename, "r")
 
     input = [line.strip() for line in f.readlines()]
@@ -34,14 +33,14 @@ def parse_operation(input: str) -> Callable[[int], int]:
 
 def parse_monkeys(input):
 
-    starting_items = [parse_starting_items(
-        x) for x in input if "Starting items" in x]
+    starting_items = [parse_starting_items(x) for x in input if "Starting items" in x]
     operations = [parse_operation(x) for x in input if "Operation" in x]
     tests = [int(x.split()[-1]) for x in input if "Test" in x]
     if_true = [int(x.split()[-1]) for x in input if "If true" in x]
     if_false = [int(x.split()[-1]) for x in input if "If false" in x]
 
     total_monkeys = len(starting_items)
+
     return {
         "total_monkeys": total_monkeys,
         "items": starting_items,
@@ -53,18 +52,16 @@ def parse_monkeys(input):
     }
 
 
-def advance_round(monkeys, divide_by_three):
+def advance_round(monkeys, calc_worry_level):
 
     for id in range(monkeys["total_monkeys"]):
         op = monkeys["operations"][id]
         test = monkeys["tests"][id]
         current_monkey_items = monkeys["items"][id]
         for item in current_monkey_items:
-            if divide_by_three:
-                new_worry_level = op(item) // 3
-            else:
-                new_worry_level = op(item)
-            new_monkey_id = monkeys["if_true"][id] if new_worry_level % test == 0 else monkeys["if_false"][id]
+            new_worry_level = calc_worry_level(op(item))
+            condition = "if_true" if new_worry_level % test == 0 else "if_false"
+            new_monkey_id = monkeys[condition][id]
             monkeys["items"][new_monkey_id].append(new_worry_level)
 
             monkeys["inspected_count"][id] += 1
@@ -72,9 +69,9 @@ def advance_round(monkeys, divide_by_three):
         monkeys["items"][id] = []
 
 
-def determine_monkey_business(rounds, monkeys, divide_by_three) -> int:
+def determine_monkey_business(rounds, monkeys, calc_worry_level) -> int:
     for _ in range(rounds):
-        advance_round(monkeys, divide_by_three)
+        advance_round(monkeys, calc_worry_level)
 
     return math.prod(sorted(monkeys["inspected_count"])[-2:])
 
@@ -83,20 +80,30 @@ def timer():
     start = time.perf_counter()
     yield
     stop = time.perf_counter()
-    result = (stop - start)
-    print("Time to execute:", result, "seconds")
+    result = round((stop - start) / 1000, 10)
+    print("Time to execute:", result, "ms")
 
 
 if __name__ == '__main__':
 
+    # part 1 example
     example_monkeys = parse_monkeys(get_input("day-11-example"))
-    pt1_example = determine_monkey_business(20, example_monkeys, True)
+    pt1_example = determine_monkey_business(20, example_monkeys, lambda x: x // 3)
     assert pt1_example == 10605, f"Result was {pt1_example} instead of {10605}"
 
+    # part 1 
     monkeys = parse_monkeys(get_input("day-11"))
-
     with timer():
-        print("part 1: ", determine_monkey_business(20, monkeys, True))
+        print("part 1: ", determine_monkey_business(20, monkeys, lambda x: x // 3))
 
-    # with timer():
-    #     print("part 2: ", determine_monkey_business(rounds=400, monkeys=monkeys, divide_by_three=False))
+    # part 2 example
+    example_monkeys = parse_monkeys(get_input("day-11-example"))
+    m = math.prod(example_monkeys["tests"])
+    pt2_example = determine_monkey_business(10_000, example_monkeys, lambda x: x % m)
+    assert pt2_example == 2713310158, f"Result was {pt2_example} instead of {2713310158}"
+
+    # part 2 
+    monkeys = parse_monkeys(get_input("day-11"))
+    m = math.prod(monkeys["tests"])
+    with timer():
+        print("part 2: ", determine_monkey_business(10_000, monkeys, lambda x: x % m))
