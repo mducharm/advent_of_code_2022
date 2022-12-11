@@ -1,108 +1,102 @@
 import math
+import inspect
 import os
 import re
 import time
 import contextlib
+from typing import Callable, List
 
-def get_input():
+
+def get_input(txt_name):
     file_dir = os.path.dirname(os.path.realpath('__file__'))
-    filename = os.path.join(file_dir, '../resources/day-11-example.txt')
+    filename = os.path.join(file_dir, f'../resources/{txt_name}.txt')
+    print(os.getcwd())
     f = open(filename, "r")
 
     input = [line.strip() for line in f.readlines()]
-    main, current_monkey = [], []
-    for line in input:
-        if line == "":
-            main.append(current_monkey)
-            current_monkey = []
-        else:
-            current_monkey.append(line)
-
-    main.append(current_monkey)
-    return main
+    return input
 
 
-class Monkey():
-    def __init__(self) -> None:
-        self.items = []
-        self.operation = ""
-        self.divisible_by = 0
-        self.test_ids = {}
-        self.monkey_if_divisible = None
-        self.monkey_if_not_divisible = None
-        self.inspected_item_count = 0
-
-    def inspect_items(self):
-        # print("inspecting the following items", self.items)
-        # print()
-        for item in self.items:
-            # print("inspecting",idx, item, "for monkey", self.id)
-            self.inspected_item_count += 1
-            new_worry_level = eval(self.operation, {"old": item}) // 3
-            # print("new worry level", new_worry_level)
-            if new_worry_level % self.divisible_by == 0:
-                self.monkey_if_divisible.items.append(new_worry_level)
-                # print(" ", "given to monkey", self.monkey_if_divisible.id)
-            else: 
-                self.monkey_if_not_divisible.items.append(new_worry_level)
-                # print(" ", "given to monkey", self.monkey_if_not_divisible.id)
-
-        self.items = []
-
-    def __repr__(self) -> str:
-        return f"<Monkey {self.id}: {self.items}, true: {self.monkey_if_divisible.id}, false: {self.monkey_if_not_divisible.id}>"
+def parse_starting_items(input: str) -> List[int]:
+    nums = input.split(":")[1].split(",")
+    return [int(x) for x in nums]
 
 
-def parse_as_monkey(input):
-    m = Monkey()
-    m.id = re.search("\d+", input[0]).group()
-    m.items = [int(x) for x in input[1].split(":")[1].split(",")]
-    m.operation = input[2].split(" = ")[1]
-    m.operation = input[2].split(" = ")[1]
-    m.divisible_by = int(input[3].split("divisible by ")[1])
-    m.test_ids = {
-        "true": int(input[4].split("throw to monkey ")[1]),
-        "false": int(input[5].split("throw to monkey ")[1])
-        }
+def parse_operation(input: str) -> Callable[[int], int]:
+    match input.split():
+        case [*_, "old", "*", "old"]:
+            return lambda x: x**2
+        case [*_, "old", "*", num]:
+            return lambda x: x * int(num)
+        case [*_, "old", "+", num]:
+            return lambda x: x + int(num)
 
-    return m
 
-def get_monkeys(input):
-    monkeys = [parse_as_monkey(x) for x in input]
+def parse_monkeys(input):
 
-    for m in monkeys:
-        m.monkey_if_divisible = monkeys[m.test_ids["true"]]
-        m.monkey_if_not_divisible = monkeys[m.test_ids["false"]]
+    starting_items = [parse_starting_items(
+        x) for x in input if "Starting items" in x]
+    operations = [parse_operation(x) for x in input if "Operation" in x]
+    tests = [int(x.split()[-1]) for x in input if "Test" in x]
+    if_true = [int(x.split()[-1]) for x in input if "If true" in x]
+    if_false = [int(x.split()[-1]) for x in input if "If false" in x]
 
-    return monkeys
+    total_monkeys = len(starting_items)
+    return {
+        "total_monkeys": total_monkeys,
+        "items": starting_items,
+        "operations": operations,
+        "tests": tests,
+        "if_true": if_true,
+        "if_false": if_false,
+        "inspected_count": list(0 for _ in range(total_monkeys))
+    }
 
-def determine_monkey_business(rounds, monkeys):
 
+def advance_round(monkeys, divide_by_three):
+
+    for id in range(monkeys["total_monkeys"]):
+        op = monkeys["operations"][id]
+        test = monkeys["tests"][id]
+        current_monkey_items = monkeys["items"][id]
+        for item in current_monkey_items:
+            if divide_by_three:
+                new_worry_level = op(item) // 3
+            else:
+                new_worry_level = op(item)
+            new_monkey_id = monkeys["if_true"][id] if new_worry_level % test == 0 else monkeys["if_false"][id]
+            monkeys["items"][new_monkey_id].append(new_worry_level)
+
+            monkeys["inspected_count"][id] += 1
+
+        monkeys["items"][id] = []
+
+
+def determine_monkey_business(rounds, monkeys, divide_by_three) -> int:
     for _ in range(rounds):
-        for m in monkeys:
-            m.inspect_items()
+        advance_round(monkeys, divide_by_three)
 
-    all_inspected_item_counts = [m.inspected_item_count for m in monkeys]
-
-    for m in monkeys:
-        print(m.id, m.inspected_item_count)
-
-    return math.prod(sorted(all_inspected_item_counts)[-2:])
+    return math.prod(sorted(monkeys["inspected_count"])[-2:])
 
 @contextlib.contextmanager
 def timer():
     start = time.perf_counter()
     yield
     stop = time.perf_counter()
-    result = (stop - start) / 1000
-    print("Time to execute:", result, "ms")
+    result = (stop - start)
+    print("Time to execute:", result, "seconds")
 
 
 if __name__ == '__main__':
-    input = get_input()
 
-    monkeys = get_monkeys(input)
+    example_monkeys = parse_monkeys(get_input("day-11-example"))
+    pt1_example = determine_monkey_business(20, example_monkeys, True)
+    assert pt1_example == 10605, f"Result was {pt1_example} instead of {10605}"
+
+    monkeys = parse_monkeys(get_input("day-11"))
 
     with timer():
-        print("part 1: ", determine_monkey_business(rounds=20, monkeys=monkeys))
+        print("part 1: ", determine_monkey_business(20, monkeys, True))
 
+    # with timer():
+    #     print("part 2: ", determine_monkey_business(rounds=400, monkeys=monkeys, divide_by_three=False))
